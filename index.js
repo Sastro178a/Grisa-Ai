@@ -1,46 +1,86 @@
-import express from "express";
-import fetch from "node-fetch";
-import dotenv from "dotenv";
-dotenv.config();
+// Import server dari Deno standar library
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const app = express();
-app.use(express.json());
+// Ambil API key dari Environment Variables di Deno Deploy
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
-app.post("/api/chat", async (req, res) => {
-  const { message, mode } = req.body;
-  try {
-    let reply = "";
+// Jalankan server utama
+serve(async (req) => {
+  const { pathname } = new URL(req.url);
 
-    if (mode === "soal") {
-      const geminiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + process.env.GEMINI_API_KEY, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
-      });
-      const geminiData = await geminiResp.json();
-      reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Tidak ada respon dari Gemini.";
-    } else {
-      const openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
+  // CORS preflight agar frontend bisa akses backend
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+
+  // Endpoint utama untuk komunikasi AI
+  if (req.method === "POST" && pathname === "/api/chat") {
+    try {
+      const { message, model } = await req.json();
+      let reply = "⚠️ Tidak ada respons dari AI.";
+
+      // Gunakan Gemini untuk mode pencarian & soal
+      if (model === "soal" || model === "pencarian") {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: message }] }],
+            }),
+          }
+        );
+        const data = await geminiRes.json();
+        reply = data.candidates?.[0]?.content?.parts?.[0]?.text || reply;
+
+      // Gunakan ChatGPT untuk mode riset & ngobrol
+      } else {
+        const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: message }],
+          }),
+        });
+        const data = await openaiRes.json();
+        reply = data.choices?.[0]?.message?.content || reply;
+      }
+
+      return new Response(JSON.stringify({ reply }), {
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + process.env.OPENAI_API_KEY
+          "Access-Control-Allow-Origin": "*",
         },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [{ role: "user", content: message }]
-        })
       });
-      const openaiData = await openaiResp.json();
-      reply = openaiData.choices?.[0]?.message?.content || "Tidak ada respon dari ChatGPT.";
+    } catch (err) {
+      console.error(err);
+      return new Response(
+        JSON.stringify({ reply: "❌ Terjadi kesalahan di server." }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
     }
-
-    res.json({ reply });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ reply: "Terjadi kesalahan di server." });
   }
+
+  // Jika bukan API, tampilkan status server aktif
+  return new Response("✅ Grisa AI Backend aktif.", {
+    headers: { "Access-Control-Allow-Origin": "*" },
+  });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Grisa AI Backend berjalan di port ${PORT}`));
