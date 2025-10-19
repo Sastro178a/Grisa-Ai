@@ -60,7 +60,8 @@
       appendMessage('user', text);
       input.value = '';
 
-      const response = await fetch('/api/chat', {
+      const response = await fetch('https://grisa-ai-db8cg7m0zes0.sastro178a.deno.net/api/chat', {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, mode: mode.value })
