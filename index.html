@@ -135,7 +135,7 @@
       appendMessage('ai', '⏳ Grisa AI sedang berpikir...');
 
       try {
-        const res = await fetch('https://your-backend-url-here/api/chat', {
+        const res = await fetch('https://grisa-ai.sastro178a.deno.net/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, model })
