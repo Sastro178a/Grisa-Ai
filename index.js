@@ -1,7 +1,9 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
-const handler = async (req) => {
-  if (req.method === "POST" && new URL(req.url).pathname === "/api/chat") {
+serve(async (req) => {
+  const url = new URL(req.url);
+
+  if (req.method === "POST" && url.pathname === "/api/chat") {
     try {
       const { message } = await req.json();
       const apiKey = Deno.env.get("OPENAI_API_KEY");
@@ -19,18 +21,20 @@ const handler = async (req) => {
       });
 
       const data = await response.json();
+
       return new Response(
-        JSON.stringify({ reply: data.choices?.[0]?.message?.content || "Tidak ada jawaban" }),
-        { headers: { "Content-Type": "application/json" } }
+        JSON.stringify({
+          reply: data.choices?.[0]?.message?.content || "Tidak ada jawaban",
+        }),
+        { headers: { "Content-Type": "application/json" } },
       );
     } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   }
 
-  // Ini WAJIB untuk test respons awal
-  return new Response("✅ Grisa AI backend aktif dan siap menerima request!");
-};
-
-// Jalankan server (tidak perlu atur port)
-serve(handler);
+  return new Response("✅ Grisa AI aktif dan siap menerima request!");
+});
