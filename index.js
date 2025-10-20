@@ -1,12 +1,17 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
-const handler = async (req) => {
-  if (req.method === "POST" && new URL(req.url).pathname === "/api/chat") {
+serve(async (req) => {
+  const url = new URL(req.url);
+
+  if (req.method === "POST" && url.pathname === "/api/chat") {
     try {
       const { message } = await req.json();
-
-      // 🔹 Ganti dengan API key kamu
       const apiKey = Deno.env.get("OPENAI_API_KEY");
+
+      if (!apiKey) {
+        return new Response(JSON.stringify({ error: "API key not found" }), { status: 500 });
+      }
+
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -28,7 +33,8 @@ const handler = async (req) => {
     }
   }
 
-  return new Response("Grisa AI aktif ✅");
-};
-
-serve(handler);
+  // Serve halaman HTML kamu
+  return new Response(await Deno.readTextFile("index.html"), {
+    headers: { "Content-Type": "text/html" },
+  });
+});
