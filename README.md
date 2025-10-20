@@ -8,4 +8,4 @@ Chatbot untuk SMK Grisawangi, menggunakan ChatGPT dan Gemini.
 4. Start Command: npm start
 5. Tambahkan Environment Variable:
    - OPENAI_API_KEY
-   - GEMINI_API_KEY
+   - GEMINI_API_KEY 
